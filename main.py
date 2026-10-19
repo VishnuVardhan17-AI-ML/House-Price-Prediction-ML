@@ -2,6 +2,7 @@
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
+from sklearn.model_selection import train_test_split, cross_validate, KFold
 
 # 1. Load the dataset
 data = pd.read_csv("data/house_prices.csv")
@@ -28,13 +29,25 @@ X_train, X_test, y_train, y_test = train_test_split(
 model = LinearRegression()
 model.fit(X_train, y_train)
 
+
 # 5. Evaluate the model
 predictions = model.predict(X_test)
 
+mae = mean_absolute_error(y_test, predictions)
+r2 = r2_score(y_test, predictions)
+
 print("\nModel Evaluation")
 print("-" * 30)
-print("Mean Absolute Error:", round(mean_absolute_error(y_test, predictions), 2))
-print("R2 Score:", round(r2_score(y_test, predictions), 3))
+print(f"Mean Absolute Error (MAE): {mae:,.2f}")
+print(f"R2 Score: {r2:.3f}")
+print(f"R2 Score Percentage: {r2 * 100:.2f}%")
+
+print("\nActual vs Predicted Prices")
+results = pd.DataFrame({
+    "Actual Price": y_test.values,
+    "Predicted Price": predictions.round(2)
+})
+print(results.head(10).to_string(index=False))
 
 # 6. Predict price for a sample house
 sample_house = pd.DataFrame([{
@@ -51,3 +64,27 @@ print("\nSample House Details:")
 print(sample_house.to_string(index=False))
 print(f"\nPredicted House Price: {predicted_price:,.2f}")
 print("\nNote: This is a practice model trained on a small sample dataset.")
+
+# 7. Five-fold cross-validation
+print("\n5-Fold Cross-Validation")
+print("-" * 30)
+
+kfold = KFold(n_splits=5, shuffle=True, random_state=42)
+
+cv_results = cross_validate(
+    LinearRegression(),
+    X,
+    y,
+    cv=kfold,
+    scoring={"mae": "neg_mean_absolute_error", "r2": "r2"}
+)
+
+mae_scores = -cv_results["test_mae"]
+r2_scores = cv_results["test_r2"]
+
+print("MAE for each fold:", mae_scores.round(2))
+print("Average MAE:", round(mae_scores.mean(), 2))
+print("R2 for each fold:", r2_scores.round(3))
+print("Average R2:", round(r2_scores.mean(), 3))
+print("R2 standard deviation:", round(r2_scores.std(), 3))
+

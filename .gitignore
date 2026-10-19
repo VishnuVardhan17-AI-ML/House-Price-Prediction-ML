@@ -1,5 +1,11 @@
-﻿.venv/
+﻿node_modules/
+.venv/
+.venv311/
 __pycache__/
 *.py[cod]
-.ipynb_checkpoints/
-.vscode/
+.env
+.env.*
+!.env.example
+.pytest_cache/
+dist/
+build/
