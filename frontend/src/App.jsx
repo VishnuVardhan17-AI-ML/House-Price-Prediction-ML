@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import {
   Home,
@@ -10,12 +11,16 @@ import {
   LoaderCircle,
   AlertCircle,
   CheckCircle2,
+  BarChart3,
+  ArrowLeft,
+  Activity,
 } from "lucide-react";
 import "./App.css";
 
 const API_URL = "http://127.0.0.1:8000";
 
 function App() {
+  const [activePage, setActivePage] = useState("prediction");
   const [form, setForm] = useState({
     area: 1400,
     bedrooms: 3,
@@ -28,26 +33,23 @@ function App() {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
 
-  const updateField = (event) => {
-    const { name, value } = event.target;
-
-    setForm((previous) => ({
-      ...previous,
-      [name]:
-        name === "location" ? value : Number(value),
-    }));
-
-    setPredictedPrice(null);
-    setError("");
-    setNote("");
-  };
-
   const money = (value) =>
     new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(value);
+
+  const updateField = (event) => {
+    const { name, value } = event.target;
+    setForm((previous) => ({
+      ...previous,
+      [name]: name === "location" ? value : Number(value),
+    }));
+    setPredictedPrice(null);
+    setError("");
+    setNote("");
+  };
 
   const handlePredict = async (event) => {
     event.preventDefault();
@@ -59,9 +61,7 @@ function App() {
     try {
       const response = await fetch(`${API_URL}/predict`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           area: Number(form.area),
           bedrooms: Number(form.bedrooms),
@@ -90,13 +90,20 @@ function App() {
     } catch (err) {
       setError(
         err instanceof TypeError
-          ? "Backend connection failed. Check that FastAPI is running on port 8000."
+          ? "Backend connection failed. Start FastAPI on port 8000 and try again."
           : err.message
       );
     } finally {
       setLoading(false);
     }
   };
+
+  const pricePerSqft =
+    predictedPrice !== null && Number(form.area) > 0
+      ? predictedPrice / Number(form.area)
+      : null;
+
+  const isAnalysis = activePage === "analysis";
 
   return (
     <div className="app-shell">
@@ -110,12 +117,22 @@ function App() {
         </div>
 
         <div className="nav-label">WORKSPACE</div>
-        <div className="nav-item active">
+
+        <button
+          type="button"
+          className={`nav-item ${!isAnalysis ? "active" : ""}`}
+          onClick={() => setActivePage("prediction")}
+        >
           <TrendingUp size={19} /> Price Prediction
-        </div>
-        <div className="nav-item">
-          <Home size={19} /> Property Analysis
-        </div>
+        </button>
+
+        <button
+          type="button"
+          className={`nav-item ${isAnalysis ? "active" : ""}`}
+          onClick={() => setActivePage("analysis")}
+        >
+          <BarChart3 size={19} /> Property Analysis
+        </button>
 
         <div className="sidebar-bottom">
           <div className="avatar">VV</div>
@@ -129,195 +146,331 @@ function App() {
       <main className="main-content">
         <header className="topbar">
           <div>
-            <span className="eyebrow">MACHINE LEARNING / REGRESSION</span>
-            <h1>House Price Prediction</h1>
-            <p>Estimate a property's value using your trained machine learning model.</p>
+            <span className="eyebrow">
+              MACHINE LEARNING / REGRESSION
+            </span>
+            <h1>{isAnalysis ? "Property Analysis" : "House Price Prediction"}</h1>
+            <p>
+              {isAnalysis
+                ? "Review your property inputs and prediction insights."
+                : "Estimate a property's value using your trained machine learning model."}
+            </p>
           </div>
           <div className="status-pill"><span /> ML API integration</div>
         </header>
 
-        <section className="welcome-banner">
-          <div>
-            <span className="banner-label">
-              <Sparkles size={15} /> AI-POWERED PROPERTY ESTIMATION
-            </span>
-            <h2>Find your property's estimated value.</h2>
-            <p>Enter the property details below to generate a prediction.</p>
-          </div>
-          <div className="banner-house">
-            <Home size={72} strokeWidth={1.1} />
-          </div>
-        </section>
-
-        <div className="content-grid">
-          <section className="panel form-panel">
-            <div className="panel-heading">
-              <div className="heading-icon"><Home size={20} /></div>
+        {!isAnalysis ? (
+          <>
+            <section className="welcome-banner">
               <div>
-                <h3>Property details</h3>
-                <p>Enter the details of your property</p>
+                <span className="banner-label">
+                  <Sparkles size={15} /> AI-POWERED PROPERTY ESTIMATION
+                </span>
+                <h2>Find your property's estimated value.</h2>
+                <p>Enter the property details below to generate a prediction.</p>
               </div>
-            </div>
-
-            <form onSubmit={handlePredict}>
-              <label className="field-label">
-                <Ruler size={16} /> Built-up area (sq. ft.)
-              </label>
-              <input
-                name="area"
-                type="number"
-                min="1"
-                value={form.area}
-                onChange={updateField}
-                required
-              />
-
-              <label className="field-label">
-                <BedDouble size={16} /> Bedrooms
-              </label>
-              <input
-                name="bedrooms"
-                type="number"
-                min="1"
-                max="20"
-                value={form.bedrooms}
-                onChange={updateField}
-                required
-              />
-
-              <label className="field-label">
-                <MapPin size={16} /> Location
-              </label>
-              <input
-                name="location"
-                type="text"
-                value={form.location}
-                onChange={updateField}
-                placeholder="e.g. Whitefield"
-                required
-              />
-
-              <label className="field-label">
-                <Home size={16} /> Property type
-              </label>
-              <select
-                name="resale"
-                value={form.resale}
-                onChange={updateField}
-              >
-                <option value={1}>Resale property</option>
-                <option value={0}>New property</option>
-              </select>
-
-              <button
-                className="predict-button"
-                type="submit"
-                disabled={loading}
-              >
-                {loading ? (
-                  <>
-                    <LoaderCircle className="spin" size={18} />
-                    Predicting...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles size={18} />
-                    Predict house price
-                  </>
-                )}
-              </button>
-            </form>
-
-            <p className="demo-note">
-              Powered by your trained Scikit-learn model.
-            </p>
-          </section>
-
-          <section className="right-column">
-            <div className="panel result-panel">
-              <span className="result-label">
-                <IndianRupee size={16} /> PREDICTED PROPERTY VALUE
-              </span>
-
-              <h2>
-                {predictedPrice === null ? "—" : money(predictedPrice)}
-              </h2>
-
-              <p>
-                {loading
-                  ? "Your model is processing the property details..."
-                  : predictedPrice !== null
-                    ? "Prediction returned by the ML backend."
-                    : "Submit the property details to get a prediction."}
-              </p>
-
-              <div className="result-divider" />
-
-              <div className="result-foot">
-                {loading ? (
-                  <>
-                    <LoaderCircle className="spin" size={15} />
-                    Processing
-                  </>
-                ) : predictedPrice !== null ? (
-                  <>
-                    <CheckCircle2 size={15} />
-                    Prediction successful
-                  </>
-                ) : (
-                  <>
-                    <span className="result-dot" />
-                    Waiting for input
-                  </>
-                )}
+              <div className="banner-house">
+                <Home size={72} strokeWidth={1.1} />
               </div>
+            </section>
 
-              {note && <p className="result-note">{note}</p>}
-
-              {error && (
-                <div className="error-message" role="alert">
-                  <AlertCircle size={18} />
-                  <span>{error}</span>
+            <div className="content-grid">
+              <section className="panel form-panel">
+                <div className="panel-heading">
+                  <div className="heading-icon"><Home size={20} /></div>
+                  <div>
+                    <h3>Property details</h3>
+                    <p>Enter the details of your property</p>
+                  </div>
                 </div>
-              )}
+
+                <form onSubmit={handlePredict}>
+                  <label className="field-label">
+                    <Ruler size={16} /> Built-up area (sq. ft.)
+                  </label>
+                  <input
+                    name="area"
+                    type="number"
+                    min="1"
+                    value={form.area}
+                    onChange={updateField}
+                    required
+                  />
+
+                  <label className="field-label">
+                    <BedDouble size={16} /> Bedrooms
+                  </label>
+                  <input
+                    name="bedrooms"
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={form.bedrooms}
+                    onChange={updateField}
+                    required
+                  />
+
+                  <label className="field-label">
+                    <MapPin size={16} /> Location
+                  </label>
+                  <input
+                    name="location"
+                    type="text"
+                    value={form.location}
+                    onChange={updateField}
+                    placeholder="e.g. Whitefield"
+                    required
+                  />
+
+                  <label className="field-label">
+                    <Home size={16} /> Property type
+                  </label>
+                  <select
+                    name="resale"
+                    value={form.resale}
+                    onChange={updateField}
+                  >
+                    <option value={1}>Resale property</option>
+                    <option value={0}>New property</option>
+                  </select>
+
+                  <button
+                    className="predict-button"
+                    type="submit"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <LoaderCircle className="spin" size={18} />
+                        Predicting...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={18} />
+                        Predict house price
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                <p className="demo-note">
+                  Powered by your trained Scikit-learn model.
+                </p>
+              </section>
+
+              <section className="right-column">
+                <div className="panel result-panel">
+                  <span className="result-label">
+                    <IndianRupee size={16} /> PREDICTED PROPERTY VALUE
+                  </span>
+                  <h2>
+                    {predictedPrice === null ? "—" : money(predictedPrice)}
+                  </h2>
+                  <p>
+                    {loading
+                      ? "Your model is processing the property details..."
+                      : predictedPrice !== null
+                        ? "Prediction returned by the ML backend."
+                        : "Submit the property details to get a prediction."}
+                  </p>
+
+                  <div className="result-divider" />
+
+                  <div className="result-foot">
+                    {loading ? (
+                      <>
+                        <LoaderCircle className="spin" size={15} />
+                        Processing
+                      </>
+                    ) : predictedPrice !== null ? (
+                      <>
+                        <CheckCircle2 size={15} />
+                        Prediction successful
+                      </>
+                    ) : (
+                      <>
+                        <span className="result-dot" />
+                        Waiting for input
+                      </>
+                    )}
+                  </div>
+
+                  {note && <p className="result-note">{note}</p>}
+
+                  {error && (
+                    <div className="error-message" role="alert">
+                      <AlertCircle size={18} />
+                      <span>{error}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="panel summary-panel">
+                  <h3>Property summary</h3>
+                  <p className="summary-subtitle">Your current input values</p>
+
+                  <div className="summary-row">
+                    <span>Built-up area</span>
+                    <strong>{Number(form.area).toLocaleString("en-IN")} sq. ft.</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Bedrooms</span>
+                    <strong>{form.bedrooms}</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Location</span>
+                    <strong>{form.location || "—"}</strong>
+                  </div>
+                  <div className="summary-row">
+                    <span>Property type</span>
+                    <strong>{Number(form.resale) === 1 ? "Resale" : "New property"}</strong>
+                  </div>
+                </div>
+
+                <div className="info-note">
+                  <Sparkles size={18} />
+                  <div>
+                    <strong>Machine learning prediction</strong>
+                    <p>
+                      This is an educational estimate from your saved model,
+                      not a verified market valuation.
+                    </p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </>
+        ) : (
+          <section className="analysis-page">
+            <div className="analysis-toolbar">
+              <button
+                type="button"
+                className="back-button"
+                onClick={() => setActivePage("prediction")}
+              >
+                <ArrowLeft size={17} /> Back to prediction
+              </button>
+              <span className="analysis-tag"><Activity size={15} /> PROPERTY OVERVIEW</span>
             </div>
 
-            <div className="panel summary-panel">
-              <h3>Property summary</h3>
-              <p className="summary-subtitle">Your current input values</p>
+            <div className="analysis-cards">
+              <article className="panel analysis-card">
+                <div className="analysis-icon"><IndianRupee size={20} /></div>
+                <span>Estimated property value</span>
+                <strong>{predictedPrice === null ? "Not predicted yet" : money(predictedPrice)}</strong>
+                <small>
+                  {predictedPrice === null
+                    ? "Run a prediction to view the estimate."
+                    : "Returned by your trained ML model."}
+                </small>
+              </article>
 
-              <div className="summary-row">
+              <article className="panel analysis-card">
+                <div className="analysis-icon"><Ruler size={20} /></div>
                 <span>Built-up area</span>
                 <strong>{Number(form.area).toLocaleString("en-IN")} sq. ft.</strong>
-              </div>
-              <div className="summary-row">
+                <small>Area entered in the prediction form</small>
+              </article>
+
+              <article className="panel analysis-card">
+                <div className="analysis-icon"><BedDouble size={20} /></div>
                 <span>Bedrooms</span>
                 <strong>{form.bedrooms}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Location</span>
-                <strong>{form.location || "—"}</strong>
-              </div>
-              <div className="summary-row">
-                <span>Property type</span>
-                <strong>
-                  {Number(form.resale) === 1 ? "Resale" : "New property"}
-                </strong>
-              </div>
+                <small>{Number(form.resale) === 1 ? "Resale property" : "New property"}</small>
+              </article>
+
+              <article className="panel analysis-card">
+                <div className="analysis-icon"><TrendingUp size={20} /></div>
+                <span>Estimated price per sq. ft.</span>
+                <strong>{pricePerSqft === null ? "—" : money(pricePerSqft)}</strong>
+                <small>
+                  {pricePerSqft === null
+                    ? "Available after a successful prediction."
+                    : "Calculated from prediction ÷ area; not a market quote."}
+                </small>
+              </article>
             </div>
 
-            <div className="info-note">
-              <Sparkles size={18} />
-              <div>
-                <strong>Machine learning prediction</strong>
-                <p>
-                  This is an educational estimate from your saved model,
-                  not a verified market valuation.
-                </p>
-              </div>
+            <div className="analysis-layout">
+              <article className="panel analysis-detail">
+                <div className="panel-heading">
+                  <div className="heading-icon"><BarChart3 size={20} /></div>
+                  <div>
+                    <h3>Property details analysis</h3>
+                    <p>Current values from your prediction form</p>
+                  </div>
+                </div>
+
+                <div className="analysis-data-row">
+                  <span><MapPin size={16} /> Location</span>
+                  <strong>{form.location || "Not entered"}</strong>
+                </div>
+                <div className="analysis-data-row">
+                  <span><Ruler size={16} /> Built-up area</span>
+                  <strong>{Number(form.area).toLocaleString("en-IN")} sq. ft.</strong>
+                </div>
+                <div className="analysis-data-row">
+                  <span><BedDouble size={16} /> Bedrooms</span>
+                  <strong>{form.bedrooms}</strong>
+                </div>
+                <div className="analysis-data-row">
+                  <span><Home size={16} /> Property type</span>
+                  <strong>{Number(form.resale) === 1 ? "Resale" : "New property"}</strong>
+                </div>
+              </article>
+
+              <article className="panel analysis-detail">
+                <div className="panel-heading">
+                  <div className="heading-icon"><Activity size={20} /></div>
+                  <div>
+                    <h3>Area overview</h3>
+                    <p>Visual summary of the entered area</p>
+                  </div>
+                </div>
+
+                <div className="area-visual">
+                  <div className="area-visual-top">
+                    <span>Built-up area</span>
+                    <strong>{Number(form.area).toLocaleString("en-IN")} sq. ft.</strong>
+                  </div>
+                  <div className="area-track">
+                    <div
+                      className="area-fill"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, Number(form.area) / 5000 * 100))}%`,
+                      }}
+                    />
+                  </div>
+                  <div className="area-scale">
+                    <span>0 sq. ft.</span><span>5,000 sq. ft.</span>
+                  </div>
+                </div>
+
+                <div className="analysis-insight">
+                  <Sparkles size={18} />
+                  <p>
+                    {predictedPrice === null
+                      ? "Generate a prediction to see the model's estimated value and price-per-square-foot calculation."
+                      : `The model estimated ${money(predictedPrice)} for the entered property. Treat this as an educational estimate, not a verified market valuation.`}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="predict-button"
+                  onClick={() => setActivePage("prediction")}
+                >
+                  <ArrowLeft size={17} /> Edit property details
+                </button>
+              </article>
             </div>
+
+            <p className="analysis-disclaimer">
+              Analysis uses only the current form inputs and the saved model prediction.
+              It does not fetch live property listings or market prices.
+            </p>
           </section>
-        </div>
+        )}
 
         <footer>EstateIQ · Educational project by G. Vishnu Vardhan</footer>
       </main>
